@@ -129,7 +129,7 @@ def download_dataset(start_block, end_block, directory, debug=False):
 
 
 if __name__ == "__main__":
-    start_block = 0
-    end_block = 100000
+    start_block = 100000
+    end_block = 150000
     dir = './dataset/'
     download_dataset(start_block, end_block, dir, True)
