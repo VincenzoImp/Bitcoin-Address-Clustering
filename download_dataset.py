@@ -3,31 +3,44 @@ import csv
 import pandas as pd
 import os
 from urllib.error import HTTPError
+import pyspark
+from pyspark.sql import *
+from pyspark.sql.types import *
+from pyspark.sql.functions import *
+from pyspark import SparkContext, SparkConf
+from urllib.request import urlopen
+from io import BytesIO
+from zipfile import ZipFile
 
+def download_dataset(start_block, end_block, directory, spark_session, debug=False):
 
-def download_dataset(start_block, end_block, directory, debug=False):
-
-    try:
-        os.mkdir(directory)
-    except FileExistsError:
-        pass
-
-    v_path = os.path.join(directory, 'vertices-{}-{}.csv'.format(start_block, end_block))
-    e_path = os.path.join(directory, 'edges-{}-{}.csv'.format(start_block, end_block))
-
-    if 'vertices-{}-{}.csv'.format(start_block, end_block) in os.listdir(directory) and 'edges-{}-{}.csv'.format(start_block, end_block) in os.listdir(directory):
+    if 'blocks-{}-{}'.format(start_block, end_block) in os.listdir(directory):
         if debug: print('dataset is already in {}'.format(directory))
-        return
-    try:
-        url = 'https://raw.githubusercontent.com/VincenzoImp/Bitcoin-Address-Clustering/master/dataset/'
-        e_df = pd.read_csv(url + 'edges-{}-{}.csv'.format(start_block, end_block))
-        v_df = pd.read_csv(url + 'vertices-{}-{}.csv'.format(start_block, end_block))
-        e_df.to_csv(e_path, index=False)
-        v_df.to_csv(v_path, index=False)
-        if debug: print('dataset downloaded from https://github.com/VincenzoImp/Bitcoin-Address-Clustering/master/dataset/')
-        return
-    except HTTPError:
-        pass
+        d_path = os.path.join(directory, 'blocks-{}-{}'.format(start_block, end_block))
+        v_path = os.path.join(d_path, 'vertices-{}-{}.csv'.format(start_block, end_block))
+        e_path = os.path.join(d_path, 'edges-{}-{}.csv'.format(start_block, end_block))
+        a_path = os.path.join(d_path, 'addresses-{}-{}.csv'.format(start_block, end_block))
+        return v_path, e_path, a_path
+    else:
+        try:
+            url = 'https://raw.githubusercontent.com/VincenzoImp/Bitcoin-Address-Clustering/master/dataset/'
+            http_response = urlopen(url + 'blocks-{}-{}.zip'.format(start_block, end_block))
+            zipfile = ZipFile(BytesIO(http_response.read()))
+            zipfile.extractall(path=directory)
+            if debug: print('dataset downloaded from https://github.com/VincenzoImp/Bitcoin-Address-Clustering/master/dataset/')
+            d_path = os.path.join(directory, 'blocks-{}-{}'.format(start_block, end_block))
+            v_path = os.path.join(d_path, 'vertices-{}-{}.csv'.format(start_block, end_block))
+            e_path = os.path.join(d_path, 'edges-{}-{}.csv'.format(start_block, end_block))
+            a_path = os.path.join(d_path, 'addresses-{}-{}.csv'.format(start_block, end_block))
+            return v_path, e_path, a_path
+        except HTTPError:
+            pass
+
+    d_path = os.path.join(directory, 'blocks-{}-{}'.format(start_block, end_block))
+    os.mkdir(d_path)
+    v_path = os.path.join(d_path, 'vertices-{}-{}.csv'.format(start_block, end_block))
+    e_path = os.path.join(d_path, 'edges-{}-{}.csv'.format(start_block, end_block))
+    a_path = os.path.join(d_path, 'addresses-{}-{}.csv'.format(start_block, end_block))
 
     if debug: print('dumping blocks...')
 
@@ -123,13 +136,24 @@ def download_dataset(start_block, end_block, directory, debug=False):
 
                     csv.writer(v_file).writerow([str(tx_id), 'tx', tx_hash, block_height, block_hash, fee, n_input, amount_input, n_output, amount_output])
 
+    a_df = spark_session.read.load(e_path,
+                                format="csv",
+                                sep=",",
+                                inferSchema="true",
+                                header="true"
+                                ).select('address').distinct()
+    a_df.createOrReplaceTempView('ADDRESSES')
+    a_df = a_df.select('address').subtract(spark.sql("select address from ADDRESSES where address like 'coinbase%'"))
+    a_df.toPandas().to_csv(a_path, index=False)
+
     if debug: print('dataset downloaded')
 
-    return
+    return v_path, e_path, a_path
 
 
 if __name__ == "__main__":
     start_block = 100000
-    end_block = 150000
+    end_block = 100000
     dir = './dataset/'
-    download_dataset(start_block, end_block, dir, True)
+    spark = SparkSession.builder.getOrCreate()
+    download_dataset(start_block, end_block, dir, spark, True)
