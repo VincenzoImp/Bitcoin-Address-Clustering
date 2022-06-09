@@ -39,33 +39,13 @@ def download_dataset(start_block, end_block, directory, spark_session, debug=Fal
 
             if debug: print('dumping blocks...')
 
-            v_columns = ['id', 'note', 'tx_hash', 'block_height', 'block_hash', 'fee', 'n_input', 'amount_input', 'n_output', 'amount_output']
-            e_columns = ['src_id', 'dst_id', 'src_position', 'dst_position', 'address', 'value']
+            #v_columns = ['id', 'note', 'tx_hash', 'block_height', 'block_hash', 'fee', 'n_input', 'amount_input', 'n_output', 'amount_output', 'temporal_index']
+            #e_columns = ['src_id', 'dst_id', 'src_position', 'dst_position', 'address', 'value']
 
-            v_schema = StructType([
-                                StructField('id', StringType(), True),
-                                StructField('note', StringType(), True),
-                                StructField('tx_hash', StringType(), True),
-                                StructField('block_height', IntegerType(), True),
-                                StructField('block_hash', StringType(), True),
-                                StructField('fee', IntegerType(), True),
-                                StructField('n_input', IntegerType(), True),
-                                StructField('amount_input', LongType(), True),
-                                StructField('n_output', IntegerType(), True),
-                                StructField('amount_output', LongType(), True)
-                                ])
-            e_schema = StructType([
-                                StructField('src_id', StringType(), True),
-                                StructField('dst_id', StringType(), True),
-                                StructField('src_position', StringType(), True),
-                                StructField('dst_position', IntegerType(), True),
-                                StructField('address', StringType(), True),
-                                StructField('value', IntegerType(), True)
-                                ])
+            v_rows = []
+            e_rows = []
 
-            v_df = spark_session.createDataFrame(spark_session.sparkContext.emptyRDD(),v_schema)
-            e_df = spark_session.createDataFrame(spark_session.sparkContext.emptyRDD(),e_schema)
-
+            temporal_index = 0
             count_UXTO = 0
 
             for block_height in range(start_block, end_block+1):
@@ -77,8 +57,7 @@ def download_dataset(start_block, end_block, directory, spark_session, debug=Fal
                         print('from block {} to block {}'.format(block_height, block_height+249))
 
                 block_reward = (5000000000 // 2**(block_height//210000))
-                newRow = spark_session.createDataFrame([('coinbase'+str(block_height), 'coinbase', '', -1, '', 0, 0, 0, 1, block_reward)], v_columns)
-                v_df = v_df.union(newRow)
+                v_rows.append(('coinbase'+str(block_height), 'coinbase', '', -1, '', 0, 0, 0, 1, block_reward, -1))
 
                 response = requests.get('https://blockchain.info/block-height/{}'.format(block_height))
                 while(response.status_code != 200):
@@ -118,8 +97,7 @@ def download_dataset(start_block, end_block, directory, spark_session, debug=Fal
                         n_input += 1
                         amount_input += value
 
-                        newRow = spark_session.createDataFrame([(str(src_id), str(dst_id), src_position, dst_position, address, value)], e_columns)
-                        e_df = e_df.union(newRow)
+                        e_rows.append((str(src_id), str(dst_id), src_position, dst_position, address, value))
 
                     for outgoing_edge in tx['out']:
 
@@ -144,15 +122,40 @@ def download_dataset(start_block, end_block, directory, spark_session, debug=Fal
                         n_output += 1
                         amount_output += value
 
-                        newRow = spark_session.createDataFrame([(str(src_id), str(dst_id), src_position, dst_position, address, value)], e_columns)
-                        e_df = e_df.union(newRow)
+                        e_rows.append((str(src_id), str(dst_id), src_position, dst_position, address, value))
 
                         if dst_id == 'UTXO'+str(count_UXTO-1):
-                            newRow = spark_session.createDataFrame([(str(dst_id), 'UTXO', '', -1, '', 0, 1, value, 0, 0)], v_columns)
-                            v_df = v_df.union(newRow)
+                            v_rows.append((str(dst_id), 'UTXO', '', -1, '', 0, 1, value, 0, 0, -1))
 
-                    newRow = spark_session.createDataFrame([(str(tx_id), 'tx', tx_hash, block_height, block_hash, fee, n_input, amount_input, n_output, amount_output)], v_columns)
-                    v_df = v_df.union(newRow)
+                    v_rows.append((str(tx_id), 'tx', tx_hash, block_height, block_hash, fee, n_input, amount_input, n_output, amount_output, temporal_index))
+                    temporal_index += 1
+
+            v_df = spark_session.createDataFrame(v_rows, StructType([
+                                                                    StructField('id', StringType(), True),
+                                                                    StructField('note', StringType(), True),
+                                                                    StructField('tx_hash', StringType(), True),
+                                                                    StructField('block_height', LongType(), True),
+                                                                    StructField('block_hash', StringType(), True),
+                                                                    StructField('fee', LongType(), True),
+                                                                    StructField('n_input', LongType(), True),
+                                                                    StructField('amount_input', LongType(), True),
+                                                                    StructField('n_output', LongType(), True),
+                                                                    StructField('amount_output', LongType(), True),
+                                                                    StructField('temporal_index', LongType(), True)
+                                                                    ])
+                                                )
+            e_df = spark_session.createDataFrame(e_rows, StructType([
+                                                                    StructField('src_id', StringType(), True),
+                                                                    StructField('dst_id', StringType(), True),
+                                                                    StructField('src_position', LongType(), True),
+                                                                    StructField('dst_position', LongType(), True),
+                                                                    StructField('address', StringType(), True),
+                                                                    StructField('value', LongType(), True)
+                                                                    ])
+                                                )
+
+            v_df = v_df.distinct()
+            e_df = e_df.distinct()
 
             e_df.createOrReplaceTempView('EDGES')
             a_df = e_df.select('address').subtract(spark.sql("select address from EDGES where address like 'coinbase%'"))
@@ -168,7 +171,7 @@ def download_dataset(start_block, end_block, directory, spark_session, debug=Fal
 
 
 if __name__ == "__main__":
-    start_block = 100000
+    start_block = 0
     end_block = 100000
     dir = './dataset/'
     spark = SparkSession.builder.getOrCreate()
