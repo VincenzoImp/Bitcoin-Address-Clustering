@@ -4,8 +4,8 @@ import pyspark
 import requests
 import csv
 import os
+import wget
 from urllib import request
-from urllib.error import HTTPError
 from pyvis.network import Network
 from pyspark.sql import *
 from pyspark.sql.types import *
@@ -31,9 +31,15 @@ def download_dataset(start_block, end_block, directory, spark_session, debug=Fal
             v_path = os.path.join(d_path, 'vertices-{}-{}'.format(start_block, end_block))
             e_path = os.path.join(d_path, 'edges-{}-{}'.format(start_block, end_block))
             a_path = os.path.join(d_path, 'addresses-{}-{}'.format(start_block, end_block))
-            request.urlretrieve('https://raw.github.com/VincenzoImp/Bitcoin-Address-Clustering/master/dataset/blocks-{}-{}/vertices-{}-{}.bz2'.format(start_block, end_block, start_block, end_block), v_path)
-            request.urlretrieve('https://raw.github.com/VincenzoImp/Bitcoin-Address-Clustering/master/dataset/blocks-{}-{}/edges-{}-{}.bz2'.format(start_block, end_block, start_block, end_block), e_path)
-            request.urlretrieve('https://raw.github.com/VincenzoImp/Bitcoin-Address-Clustering/master/dataset/blocks-{}-{}/addresses-{}-{}.bz2'.format(start_block, end_block, start_block, end_block), a_path)
+            wget.download('https://raw.github.com/VincenzoImp/Bitcoin-Address-Clustering/master/dataset/blocks-{}-{}/vertices-{}-{}.tar.gz'.format(start_block, end_block, start_block, end_block), out=d_path)
+            wget.download('https://raw.github.com/VincenzoImp/Bitcoin-Address-Clustering/master/dataset/blocks-{}-{}/edges-{}-{}.tar.gz'.format(start_block, end_block, start_block, end_block), out=d_path)
+            wget.download('https://raw.github.com/VincenzoImp/Bitcoin-Address-Clustering/master/dataset/blocks-{}-{}/addresses-{}-{}.tar.gz'.format(start_block, end_block, start_block, end_block), out=d_path)
+            os.system('tar -xf '+v_path.replace(' ', '\ ')+'.tar.gz -C '+d_path.replace(' ', '\ '))
+            os.system('tar -xf '+e_path.replace(' ', '\ ')+'.tar.gz -C '+d_path.replace(' ', '\ '))
+            os.system('tar -xf '+a_path.replace(' ', '\ ')+'.tar.gz -C'+d_path.replace(' ', '\ '))
+            os.remove(v_path+'.tar.gz')
+            os.remove(e_path+'.tar.gz')
+            os.remove(a_path+'.tar.gz')
             if debug: print('dataset downloaded from https://github.com/VincenzoImp/Bitcoin-Address-Clustering/master/dataset/blocks-{}-{}'.format(start_block, end_block))
 
         except:
@@ -72,7 +78,7 @@ def download_dataset(start_block, end_block, directory, spark_session, debug=Fal
                             try:
                                 response = requests.get('https://blockchain.info/block-height/{}'.format(block_height))
                                 if response.status_code == 200: loop = False
-                            except HTTPError:
+                            except:
                                 pass
 
                         block_hash = response.json()['blocks'][0]['hash']
@@ -157,6 +163,7 @@ def download_dataset(start_block, end_block, directory, spark_session, debug=Fal
 
             e_df.createOrReplaceTempView('EDGES')
             a_df = e_df.select('address').subtract(spark_session.sql("select address from EDGES where address like 'coinbase%'"))
+            a_df = a_df.withColumn('cluster_id', monotonically_increasing_id())
 
             v_path = os.path.join(d_path, 'vertices-{}-{}'.format(start_block, end_block))
             e_path = os.path.join(d_path, 'edges-{}-{}'.format(start_block, end_block))
@@ -175,8 +182,8 @@ def download_dataset(start_block, end_block, directory, spark_session, debug=Fal
 
 
 if __name__ == "__main__":
-    start_block = 100000
-    end_block = 150000
+    start_block = 0
+    end_block = 120000
     dir = './dataset/'
     spark = SparkSession.builder \
     .master("local[*]")\
