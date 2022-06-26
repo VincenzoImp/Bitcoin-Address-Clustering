@@ -183,7 +183,7 @@ def download_dataset(start_block, end_block, directory, spark_session, debug=Fal
 
 if __name__ == "__main__":
     start_block = 0
-    end_block = 120000
+    end_block = 115000
     dir = './dataset/'
     spark = SparkSession.builder \
     .master("local[*]")\
