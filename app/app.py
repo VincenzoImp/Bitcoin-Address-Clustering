@@ -1,6 +1,3 @@
-
-print('installing libraries')
-
 import streamlit as st
 import streamlit.components.v1 as components
 import pyspark
@@ -15,23 +12,18 @@ import os
 from urllib import request
 from urllib.error import HTTPError
 from pyvis.network import Network
-
-print('all libraries are imported')
+import base64
+from PIL import Image
 
 def generate_pyvis_graph(v_df, e_df, a_df, cluster_id_selected):
     addr_clust = {row.address : row.cluster_id for row in a_df.rdd.collect()}
     net = Network(
                 height='100%',
-                width='100%',
+                width='80%',
                 directed=True
                 )
-    net.repulsion(
-                node_distance=420,
-                central_gravity=0.33,
-                spring_length=110,
-                spring_strength=0.10,
-                damping=0.95
-                )
+    net.show_buttons(filter_=["physics"])
+
     for node in v_df.rdd.collect():
         if node.note == 'tx':
             title = 'tx_hash: {}\n'.format(node.tx_hash) + \
@@ -68,6 +60,21 @@ def generate_pyvis_graph(v_df, e_df, a_df, cluster_id_selected):
             net.add_edge(source=str(edge.src_id), to=str(edge.dst_id), title=title, value=edge.value/100000000)
     return net
 
+def render_svg(svg_file):
+    with open(svg_file, "r") as f:
+        lines = f.readlines()
+        svg = "".join(lines)
+        b64 = base64.b64encode(svg.encode("utf-8")).decode("utf-8")
+        html = r'<img src="data:image/svg+xml;base64,%s"/>' % b64
+        html = '<p style="text-align:center;">' + html + '</p>'
+        return html
+
+
+
+
+
+
+
 
 
 
@@ -76,26 +83,19 @@ def main(start_block, end_block):
     print('executing main')
 
     DIR = './'
+
     spark = SparkSession.builder.getOrCreate()
-
     d_path = os.path.join(DIR, 'blocks-{}-{}-clustered'.format(start_block, end_block))
-    v_path = os.path.join(d_path, 'vertices-{}-{}'.format(start_block, end_block))
     e_path = os.path.join(d_path, 'edges-{}-{}'.format(start_block, end_block))
+    v_path = os.path.join(d_path, 'vertices-{}-{}'.format(start_block, end_block))
     a_path = os.path.join(d_path, 'addresses-{}-{}'.format(start_block, end_block))
-
-    v_df = spark.read.load(v_path,
-                            format="csv",
-                            sep=",",
-                            inferSchema="true",
-                            header="true"
-                            )
     e_df = spark.read.load(e_path,
                             format="csv",
                             sep=",",
                             inferSchema="true",
                             header="true"
                             )
-    a_df = spark.read.load(a_path,
+    v_df = spark.read.load(v_path,
                             format="csv",
                             sep=",",
                             inferSchema="true",
@@ -113,26 +113,45 @@ def main(start_block, end_block):
                             .withColumn('amount_output', lit(0)) \
                             .withColumn('temporal_index', lit(-1))
     v_df = v_df.union(unknown_v_df)
+    a_df = spark.read.load(a_path,
+                            format="csv",
+                            sep=",",
+                            inferSchema="true",
+                            header="true"
+                            )
 
-    print('dataset loaded')
-
+    img = Image.open('Bitcoin.png')
     st.set_page_config(
         page_title="Bitcoin Address Clustering",
-        layout="wide"
+        layout="wide",
+        page_icon=img
     )
-    st.title('Bitcoin Address Clustering')
-    st.subheader('''
-            Enter a bitcoin address to be clustered using the following heuristics:\n
-            – common-input-ownership heuristic\n
-            – change address detection heuristic\n
-            – Coinbase transaction mining address clustering heuristic\n
-            – multiple mining pool address clustering heuristic\n
-            – mixed transaction recognition heuristic\n
-            – Louvain community detection algorithm\n'''.format(start_block, end_block)
-            )
+
+    st.title('Bitcoin Address Clustering\n')
     with st.container():
-        st1, st2 = st.columns(2)
-        with st1.form(key='form'):
+        c1, c2 = st.columns(2)
+        c1.subheader('''
+                Enter a bitcoin address to be clustered using the following heuristics:\n
+                - Satoshi heuristic\n
+                - Coinbase transaction mining address clustering heuristic\n
+                - Common-input-ownership heuristic\n
+                - Single input and single output heuristic\n
+                - Consolidation transaction heuristic\n
+                - Payment transaction with amount payed and change address heuristic\n
+                - Change address detection heuristic\n
+                \t- same address in input and output heuristic\n
+                \t- address reuse heuristic\n
+                \t- Unnecessary input heuristic\n
+                \t- new address in output heuristic\n
+                \t- round number heuristic\n
+                - Mixed transaction recognition heuristic\n
+                \t- taint analysis and coinjoin sudoku
+                ''')
+
+        c2.markdown(render_svg('bitcoin-img.svg'), unsafe_allow_html=True)
+        c2.write('\n\n\n\n')
+
+        with c2.form(key='form'):
             address = st.text_input(label='Insert address to cluster')
             submit_button = st.form_submit_button(label='Start Clustering')
 
@@ -162,7 +181,7 @@ def main(start_block, end_block):
 
                 new_pyvis_graph = generate_pyvis_graph(new_v_df, new_e_df, a_df, cluster_id)
 
-                new_pyvis_graph.height = '1200px'
+                new_pyvis_graph.height = '800px'
                 new_pyvis_graph.width = '2400px'
                 new_pyvis_graph.write_html(os.path.join(d_path, 'cluster_graph-{}-{}.html'.format(start_block, end_block)))
 
@@ -170,13 +189,16 @@ def main(start_block, end_block):
                 print('display cluster')
                 st.success("Done!")
                 HtmlFile = open(os.path.join(d_path, 'cluster_graph-{}-{}.html'.format(start_block, end_block)), 'r', encoding='utf-8')
-                components.html(HtmlFile.read(), height=1200, scrolling=True)
+                components.html(HtmlFile.read(), height=800, scrolling=True)
 
                 print('cluster displayed')
 
+                st.subheader('Graph Nodes')
                 st.dataframe(new_v_df.toPandas())
+                st.subheader('Graph Edges')
                 st.dataframe(new_e_df.toPandas())
-                st.dataframe(ClusterList)
+                st.subheader('Clustered Addresses')
+                st.dataframe(ClusterList.toPandas())
 
     print('end main')
     return
