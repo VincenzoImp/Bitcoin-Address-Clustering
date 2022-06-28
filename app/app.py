@@ -1,3 +1,4 @@
+import sys
 import streamlit as st
 import streamlit.components.v1 as components
 import pyspark
@@ -14,6 +15,7 @@ from urllib.error import HTTPError
 from pyvis.network import Network
 import base64
 from PIL import Image
+
 
 def generate_pyvis_graph(v_df, e_df, a_df, cluster_id_selected):
     addr_clust = {row.address : row.cluster_id for row in a_df.rdd.collect()}
@@ -85,7 +87,7 @@ def main(start_block, end_block):
     DIR = './'
 
     spark = SparkSession.builder.getOrCreate()
-    d_path = os.path.join(DIR, 'blocks-{}-{}-clustered'.format(start_block, end_block))
+    d_path = os.path.join(DIR, 'blocks-{}-{}'.format(start_block, end_block))
     e_path = os.path.join(d_path, 'edges-{}-{}'.format(start_block, end_block))
     v_path = os.path.join(d_path, 'vertices-{}-{}'.format(start_block, end_block))
     a_path = os.path.join(d_path, 'addresses-{}-{}'.format(start_block, end_block))
@@ -204,6 +206,6 @@ def main(start_block, end_block):
     return
 
 if __name__ == "__main__":
-    start_block = 0
-    end_block = 120000
+    start_block = int(sys.argv[1])
+    end_block = int(sys.argv[2])
     main(start_block, end_block)
