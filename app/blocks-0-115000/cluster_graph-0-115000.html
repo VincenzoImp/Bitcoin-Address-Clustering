@@ -1,0 +1,123 @@
+<html>
+<head>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/vis-network@latest/styles/vis-network.css" type="text/css" />
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/vis-network@latest/dist/vis-network.min.js"> </script>
+<center>
+<h1></h1>
+</center>
+
+<!-- <link rel="stylesheet" href="../node_modules/vis/dist/vis.min.css" type="text/css" />
+<script type="text/javascript" src="../node_modules/vis/dist/vis.js"> </script>-->
+
+<style type="text/css">
+
+        #mynetwork {
+            width: 2400px;
+            height: 800px;
+            background-color: #ffffff;
+            border: 1px solid lightgray;
+            position: relative;
+            float: left;
+        }
+
+        
+
+        
+        #config {
+            float: left;
+            width: 400px;
+            height: 600px;
+        }
+        
+
+        
+</style>
+
+</head>
+
+<body>
+<div id = "mynetwork"></div>
+
+
+<div id = "config"></div>
+
+<script type="text/javascript">
+
+    // initialize global variables.
+    var edges;
+    var nodes;
+    var network; 
+    var container;
+    var options, data;
+
+    
+    // This method is responsible for drawing the graph, returns the drawn network
+    function drawGraph() {
+        var container = document.getElementById('mynetwork');
+        
+        
+
+        // parsing and collecting nodes and edges from the python
+        nodes = new vis.DataSet([{"id": "2753116422087273", "label": "2753116422087273", "shape": "dot", "title": "tx_hash: 71b3dbaca67e9f9189dad3617138c19725ab541ef0b49c05a94913e9f28e3f4e\nblock_height: 100002\nn_input: 1\nn_output: 2\namount_input: 0.25 BTC\namount_output: 0.25 BTC\nfee: 0.0 BTC"}, {"id": "7928213169478731", "label": "7928213169478731", "shape": "dot", "title": "tx_hash: 6ec73ab8069fd68f034afafc215bedd7f6ed1465dcd6df79f458e25ccd5755e1\nblock_height: 99827\nn_input: 1\nn_output: 2\namount_input: 0.25 BTC\namount_output: 0.25 BTC\nfee: 0.0 BTC"}, {"id": "7236873574535736", "label": "7236873574535736", "shape": "dot", "title": "tx_hash: fac2d53ed2f083c8dba090aaf88949c8e4d13306c52d5e6514c5918e752fafcd\nblock_height: 99827\nn_input: 1\nn_output: 2\namount_input: 0.5 BTC\namount_output: 0.5 BTC\nfee: 0.0 BTC"}, {"id": "4741942843824707", "label": "4741942843824707", "shape": "dot", "title": "tx_hash: 9eb4ab14fb5480539ae42f02f9765170e04d203e4ab1ed60bb19d202d62cc686\nblock_height: 99827\nn_input: 1\nn_output: 2\namount_input: 0.24 BTC\namount_output: 0.24 BTC\nfee: 0.0 BTC"}, {"id": "4202299967538692", "label": "4202299967538692", "shape": "dot", "title": "tx_hash: fd8e3f73667c237bbaaa2a5d4d5d3d27c384829f9708a416fc263070a6c16f77\nblock_height: 99411\nn_input: 1\nn_output: 2\namount_input: 251.36 BTC\namount_output: 251.36 BTC\nfee: 0.0 BTC"}, {"id": "4664820645350323", "label": "4664820645350323", "shape": "dot", "title": "tx_hash: d8bd3edce39c948394137cdf95eb4807dbd73bd066e7b2a9269e5d0e8c099584\nblock_height: 99411\nn_input: 1\nn_output: 2\namount_input: 250.86 BTC\namount_output: 250.86 BTC\nfee: 0.0 BTC"}, {"id": "3263299089297465", "label": "3263299089297465", "shape": "dot", "title": "tx_hash: 34351d0c8e7e051996d089115a40f29c2c051654aed990eefcca811b38a0bf5c\nblock_height: 99413\nn_input: 1\nn_output: 2\namount_input: 250.36 BTC\namount_output: 250.36 BTC\nfee: 0.0 BTC"}, {"id": "129337757637464", "label": "129337757637464", "shape": "dot", "title": "tx_hash: 79217b4483ae283a4baafa0633a9b097196fcf8b218ac29ddfc3dacc580ead03\nblock_height: 99828\nn_input: 1\nn_output: 2\namount_input: 0.22 BTC\namount_output: 0.22 BTC\nfee: 0.0 BTC"}, {"id": "7770850043853106", "label": "7770850043853106", "shape": "dot", "title": "tx_hash: d2fc17c534865a3b114fd23c0adf7d73cbea618e58dc8d654a94c9bb2360dcdc\nblock_height: 99827\nn_input: 1\nn_output: 2\namount_input: 0.23 BTC\namount_output: 0.23 BTC\nfee: 0.0 BTC"}, {"id": "4753449707843795", "label": "4753449707843795", "shape": "dot", "title": "tx_hash: 21d2eb195736af2a40d42107e6abd59c97eb6cffd4a5a7a7709e86590ae61987\nblock_height: 100002\nn_input: 5\nn_output: 1\namount_input: 0.05 BTC\namount_output: 0.05 BTC\nfee: 0.0 BTC"}, {"id": "1506302321047417", "label": "1506302321047417", "shape": "dot", "title": "tx_hash: 7b109e08956a7171d253f54a14ba30005821c9623760925768c8bb29b6cacf2a\nblock_height: 99828\nn_input: 1\nn_output: 2\namount_input: 0.21 BTC\namount_output: 0.21 BTC\nfee: 0.0 BTC"}, {"id": "UTXO40493", "label": "UTXO40493", "shape": "square", "title": "UTXO\namount: 0.2 BTC"}]);
+        edges = new vis.DataSet([{"arrows": "to", "from": "1506302321047417", "title": "address: 13CM9oSfpyDnbQTHeraGW4LCF851Usp3ik\nvalue: 0.01 BTC\ncluster_id : 25769826379", "to": "4753449707843795", "value": 0.01}, {"arrows": "to", "color": "red", "from": "7770850043853106", "title": "address: 12vczuFnaw57i5DfAb2qzh4euZhMCNNniX\nvalue: 0.22 BTC\ncluster_id : 51539630576", "to": "129337757637464", "value": 0.22}, {"arrows": "to", "color": "red", "from": "129337757637464", "title": "address: 1M2i2GeuDFxWM5xSsdTtphTpzWJLmzxH86\nvalue: 0.21 BTC\ncluster_id : 51539630576", "to": "1506302321047417", "value": 0.21}, {"arrows": "to", "from": "129337757637464", "title": "address: 13CM9oSfpyDnbQTHeraGW4LCF851Usp3ik\nvalue: 0.01 BTC\ncluster_id : 25769826379", "to": "4753449707843795", "value": 0.01}, {"arrows": "to", "color": "red", "from": "1506302321047417", "title": "address: 1Cpn3nyW58ahMqM6dDGznibcJkTL8qFvya\nvalue: 0.2 BTC\ncluster_id : 51539630576", "to": "UTXO40493", "value": 0.2}, {"arrows": "to", "from": "7770850043853106", "title": "address: 13CM9oSfpyDnbQTHeraGW4LCF851Usp3ik\nvalue: 0.01 BTC\ncluster_id : 25769826379", "to": "4753449707843795", "value": 0.01}, {"arrows": "to", "color": "red", "from": "4741942843824707", "title": "address: 1HRmuReSMxABGFSXPW1X2PUYTnAxvGoghk\nvalue: 0.23 BTC\ncluster_id : 51539630576", "to": "7770850043853106", "value": 0.23}, {"arrows": "to", "from": "4741942843824707", "title": "address: 13CM9oSfpyDnbQTHeraGW4LCF851Usp3ik\nvalue: 0.01 BTC\ncluster_id : 25769826379", "to": "4753449707843795", "value": 0.01}, {"arrows": "to", "color": "red", "from": "7928213169478731", "title": "address: 1Ec4PL3rtxzdfpDgWD2QtGAazFEr4DnV7r\nvalue: 0.24 BTC\ncluster_id : 51539630576", "to": "4741942843824707", "value": 0.24}, {"arrows": "to", "from": "7928213169478731", "title": "address: 13CM9oSfpyDnbQTHeraGW4LCF851Usp3ik\nvalue: 0.01 BTC\ncluster_id : 25769826379", "to": "4753449707843795", "value": 0.01}, {"arrows": "to", "from": "4664820645350323", "title": "address: 1LBa4vmuzaaecGqMyEUpea2YQPCQax2PmR\nvalue: 250.36 BTC\ncluster_id : 42949697561", "to": "3263299089297465", "value": 250.36}, {"arrows": "to", "color": "red", "from": "7236873574535736", "title": "address: 18wYva7LuGeNZbYmCKv9mH2VXDRngyx4qx\nvalue: 0.25 BTC\ncluster_id : 51539630576", "to": "7928213169478731", "value": 0.25}, {"arrows": "to", "color": "red", "from": "4664820645350323", "title": "address: 15NrhggfsgdMwwXkSnhGrSowrvkCbv19ci\nvalue: 0.5 BTC\ncluster_id : 51539630576", "to": "7236873574535736", "value": 0.5}, {"arrows": "to", "from": "7236873574535736", "title": "address: 13CM9oSfpyDnbQTHeraGW4LCF851Usp3ik\nvalue: 0.25 BTC\ncluster_id : 25769826379", "to": "2753116422087273", "value": 0.25}, {"arrows": "to", "from": "4202299967538692", "title": "address: 1BTbAZqQaQWFmaSs1xJ1QsZ4kDHmCMVCG9\nvalue: 250.86 BTC\ncluster_id : 17179893177", "to": "4664820645350323", "value": 250.86}]);
+
+        // adding nodes and edges to the graph
+        data = {nodes: nodes, edges: edges};
+
+        var options = {
+    "configure": {
+        "enabled": true,
+        "filter": [
+            "physics"
+        ]
+    },
+    "edges": {
+        "color": {
+            "inherit": true
+        },
+        "smooth": {
+            "enabled": true,
+            "type": "dynamic"
+        }
+    },
+    "interaction": {
+        "dragNodes": true,
+        "hideEdgesOnDrag": false,
+        "hideNodesOnDrag": false
+    },
+    "physics": {
+        "enabled": true,
+        "stabilization": {
+            "enabled": true,
+            "fit": true,
+            "iterations": 1000,
+            "onlyDynamicEdges": false,
+            "updateInterval": 50
+        }
+    }
+};
+        
+        
+
+        
+        // if this network requires displaying the configure window,
+        // put it in its div
+        options.configure["container"] = document.getElementById("config");
+        
+
+        network = new vis.Network(container, data, options);
+	 
+        
+
+
+        
+
+        return network;
+
+    }
+
+    drawGraph();
+
+</script>
+</body>
+</html>
