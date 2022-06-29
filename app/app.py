@@ -62,6 +62,7 @@ def generate_pyvis_graph(v_df, e_df, a_df, cluster_id_selected):
             net.add_edge(source=str(edge.src_id), to=str(edge.dst_id), title=title, value=edge.value/100000000)
     return net
 
+
 def render_svg(svg_file):
     with open(svg_file, "r") as f:
         lines = f.readlines()
@@ -70,9 +71,6 @@ def render_svg(svg_file):
         html = r'<img src="data:image/svg+xml;base64,%s"/>' % b64
         html = '<p style="text-align:center;">' + html + '</p>'
         return html
-
-
-
 
 
 
@@ -91,6 +89,7 @@ def main(start_block, end_block):
     e_path = os.path.join(d_path, 'edges-{}-{}'.format(start_block, end_block))
     v_path = os.path.join(d_path, 'vertices-{}-{}'.format(start_block, end_block))
     a_path = os.path.join(d_path, 'addresses-{}-{}'.format(start_block, end_block))
+
     e_df = spark.read.load(e_path,
                             format="csv",
                             sep=",",
@@ -121,6 +120,7 @@ def main(start_block, end_block):
                             inferSchema="true",
                             header="true"
                             )
+
 
     img = Image.open('Bitcoin.png')
     st.set_page_config(
@@ -181,26 +181,33 @@ def main(start_block, end_block):
                 tmp_df = new_e_df.select(new_e_df.src_id).union(new_e_df.select(new_e_df.dst_id)).distinct().withColumnRenamed('src_id', 'tmp_id')
                 new_v_df = v_df.join(tmp_df, v_df.id == tmp_df.tmp_id).drop('tmp_id')
 
-                new_pyvis_graph = generate_pyvis_graph(new_v_df, new_e_df, a_df, cluster_id)
+                n_v = new_v_df.count()
+                n_e = new_e_df.count()
 
-                new_pyvis_graph.height = '800px'
-                new_pyvis_graph.width = '2400px'
-                new_pyvis_graph.write_html(os.path.join(d_path, 'cluster_graph-{}-{}.html'.format(start_block, end_block)))
+                if n_v + n_e > 1400:
+                    st.error('Too large graph to plot: {} nodes, {} edges'.format(n_v, n_e))
+                else:
 
-                print('cluster graphs generated')
-                print('display cluster')
-                st.success("Done!")
-                HtmlFile = open(os.path.join(d_path, 'cluster_graph-{}-{}.html'.format(start_block, end_block)), 'r', encoding='utf-8')
-                components.html(HtmlFile.read(), height=800, scrolling=True)
+                    new_pyvis_graph = generate_pyvis_graph(new_v_df, new_e_df, a_df, cluster_id)
 
-                print('cluster displayed')
+                    new_pyvis_graph.height = '800px'
+                    new_pyvis_graph.width = '2400px'
+                    new_pyvis_graph.write_html(os.path.join(d_path, 'cluster_graph-{}-{}.html'.format(start_block, end_block)))
 
-                st.subheader('Graph Nodes')
-                st.dataframe(new_v_df.toPandas())
-                st.subheader('Graph Edges')
-                st.dataframe(new_e_df.toPandas())
-                st.subheader('Clustered Addresses')
-                st.dataframe(ClusterList.toPandas())
+                    print('cluster graphs generated')
+                    print('display cluster')
+                    st.success("Done!")
+                    HtmlFile = open(os.path.join(d_path, 'cluster_graph-{}-{}.html'.format(start_block, end_block)), 'r', encoding='utf-8')
+                    components.html(HtmlFile.read(), height=800, scrolling=True)
+
+                    print('cluster displayed')
+
+                    st.subheader('Graph Nodes')
+                    st.dataframe(new_v_df.toPandas())
+                    st.subheader('Graph Edges')
+                    st.dataframe(new_e_df.toPandas())
+                    st.subheader('Clustered Addresses')
+                    st.dataframe(ClusterList.toPandas())
 
     print('end main')
     return
