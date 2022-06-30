@@ -1,4 +1,9 @@
 import sys
+import os
+os.system('pip install -U -q wget')
+os.system('pip install -U -q pyspark')
+os.system('pip install -U -q pyvis')
+os.system('pip install -U -q streamlit')
 import streamlit as st
 import streamlit.components.v1 as components
 import pyspark
@@ -9,7 +14,6 @@ from pyspark import SparkContext, SparkConf
 import requests
 import wget
 import csv
-import os
 from urllib import request
 from urllib.error import HTTPError
 from pyvis.network import Network
