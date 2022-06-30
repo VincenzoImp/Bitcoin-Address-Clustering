@@ -1,9 +1,5 @@
 import sys
 import os
-os.system('pip install -U -q wget')
-os.system('pip install -U -q pyspark')
-os.system('pip install -U -q pyvis')
-os.system('pip install -U -q streamlit')
 import streamlit as st
 import streamlit.components.v1 as components
 import pyspark
