@@ -204,13 +204,14 @@ def main(start_block, end_block):
 
                     new_pyvis_graph.height = '800px'
                     new_pyvis_graph.width = '2400px'
-                    new_pyvis_graph.write_html(os.path.join(d_path, 'cluster_graph-{}-{}.html'.format(start_block, end_block)))
+                    graph_path = os.path.join(d_path, '{}_cluster_graph-{}-{}.html'.format(cluster_id, start_block, end_block))
+                    new_pyvis_graph.write_html(graph_path)
 
                     print('cluster graphs generated')
                     print('display cluster')
                     st.success("Done!")
 
-                    HtmlFile = open(os.path.join(d_path, 'cluster_graph-{}-{}.html'.format(start_block, end_block)), 'r', encoding='utf-8')
+                    HtmlFile = open(graph_path, 'r', encoding='utf-8')
                     components.html(HtmlFile.read(), height=800, scrolling=True)
 
                     print('cluster displayed')
