@@ -1,12 +1,5 @@
-sys
-os
 streamlit
 pyspark
-requests
 wget
-csv
-urllib
 pyvis
-base64
-PIL
 pandas
