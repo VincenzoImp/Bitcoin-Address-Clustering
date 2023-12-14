@@ -2,11 +2,6 @@ import sys
 import os
 import streamlit as st
 import streamlit.components.v1 as components
-import pyspark
-from pyspark.sql import *
-from pyspark.sql.types import *
-from pyspark.sql.functions import *
-from pyspark import SparkContext, SparkConf
 import requests
 import wget
 import csv
@@ -28,44 +23,52 @@ st.set_page_config(
 )
 
 
-@st.cache
+@st.cache_data
 def load_df(start_block, end_block, d_path):
+    
+    def foo(d_path):
+        df = None
+        for file in os.listdir(d_path):
+            # if csv
+            if file.endswith('.csv'):
+                tmp_df = pd.read_csv(os.path.join(d_path, file))
+                if df is None:
+                    df = tmp_df
+                else:
+                    pd.concat([df, tmp_df])
+        return df
     
     e_path = os.path.join(d_path, 'edges-{}-{}'.format(start_block, end_block))
     v_path = os.path.join(d_path, 'vertices-{}-{}'.format(start_block, end_block))
     a_path = os.path.join(d_path, 'addresses-{}-{}'.format(start_block, end_block))
-    spark = SparkSession.builder.getOrCreate()
-    e_df = spark.read.load(e_path,
-                            format="csv",
-                            sep=",",
-                            inferSchema="true",
-                            header="true"
-                            )
-    v_df = spark.read.load(v_path,
-                            format="csv",
-                            sep=",",
-                            inferSchema="true",
-                            header="true"
-                            )
-    unknown_v_df = e_df.select('src_id').union(e_df.select('dst_id')).distinct().subtract(v_df.select('id')).withColumnRenamed('src_id', 'id')
-    unknown_v_df = unknown_v_df.withColumn('note', lit('unknown_tx')) \
-                            .withColumn('tx_hash', lit(None)) \
-                            .withColumn('block_height', lit(-1)) \
-                            .withColumn('block_hash', lit(None)) \
-                            .withColumn('fee', lit(0)) \
-                            .withColumn('n_input', lit(0)) \
-                            .withColumn('amount_input', lit(0)) \
-                            .withColumn('n_output', lit(0)) \
-                            .withColumn('amount_output', lit(0)) \
-                            .withColumn('temporal_index', lit(-1))
-    v_df = v_df.union(unknown_v_df)
-    a_df = spark.read.load(a_path,
-                            format="csv",
-                            sep=",",
-                            inferSchema="true",
-                            header="true"
-                            )
-    return e_df.toPandas(), v_df.toPandas(), a_df.toPandas()
+    
+
+    e_df = foo(e_path)
+    v_df = foo(v_path)
+    a_df = foo(a_path)
+
+    unknown_v_df = pd.concat([
+        e_df['src_id'].to_frame().rename(columns={'src_id':'id'}), 
+        e_df['dst_id'].to_frame().rename(columns={'dst_id':'id'})
+    ])
+    unknown_v_df = unknown_v_df.drop_duplicates().reset_index(drop=True)
+    unknown_v_df = unknown_v_df[~unknown_v_df.id.isin(v_df.id)]
+    unknown_v_df['note'] = 'unknown_tx'
+    unknown_v_df['tx_hash'] = None
+    unknown_v_df['block_height'] = -1
+    unknown_v_df['block_hash'] = None
+    unknown_v_df['fee'] = 0
+    unknown_v_df['n_input'] = 0
+    unknown_v_df['amount_input'] = 0
+    unknown_v_df['n_output'] = 0
+    unknown_v_df['amount_output'] = 0
+    unknown_v_df['temporal_index'] = -1
+    
+    v_df = pd.concat([v_df, unknown_v_df]).drop_duplicates().reset_index(drop=True)
+
+    a_df = foo(a_path)
+
+    return e_df, v_df, a_df
 
 
 
