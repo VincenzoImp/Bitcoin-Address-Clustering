@@ -1,9 +1,5 @@
 # Bitcoin Address Clustering
 
-A comprehensive implementation of Bitcoin address clustering using multiple heuristic conditions for blockchain analysis and chain analysis applications.
-
-## Abstract
-
 This project extracts information from the Bitcoin blockchain to create transaction graphs and perform chain analysis through Bitcoin address clustering. The main goal is to group Bitcoin addresses that likely belong to the same entity using various heuristic methods, enabling better understanding of Bitcoin transaction flows and entity behaviors.
 
 ## Table of Contents
